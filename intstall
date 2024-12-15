@@ -1,0 +1,36 @@
+#!/bin/bash
+
+# 定义标记文件路径
+MARK_FILE=".update"
+
+# 检查是否已经更新过系统（标记文件是否存在）
+if [ ! -f "$MARK_FILE" ]; then
+    echo "首次执行，正在更新系统..."
+    pkg update
+    pkg upgrade -y
+    
+    # 如果更新成功，创建标记文件
+    if [ $? -eq 0 ]; then
+        touch "$MARK_FILE"
+        echo "系统更新成功，已创建标记文件。"
+    else
+        echo "系统更新失败。"
+        exit 1
+    fi
+else
+    echo "系统已经更新过，跳过更新步骤。"
+fi
+
+# 检查 ffmpeg 是否已经安装
+if pkg list-installed | grep -q ffmpeg; then
+    echo "ffmpeg 已经安装，跳过安装步骤。"
+else
+    echo "ffmpeg 未安装，正在安装ffmpeg..."
+    pkg install -y ffmpeg
+    if [ $? -eq 0 ]; then
+        echo "ffmpeg 安装成功。"
+    else
+        echo "ffmpeg 安装失败。"
+        exit 1
+    fi
+fi

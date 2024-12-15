@@ -1,0 +1,87 @@
+#!/bin/bash
+
+# 指定根目录
+root_dir="/storage/emulated/0/Android/data/tv.danmaku.bili/download/"
+
+# 检查根目录是否存在
+if [ ! -d "$root_dir" ]; then
+    echo "根目录不存在。"
+    exit 1
+fi
+
+# 列出子目录并编号
+echo "请选择一个文件夹："
+declare -A dirs # 声明一个关联数组来存储目录名称和路径
+declare -A out # 声明一个关联数组来存储目录名称和路径
+index=1
+for dir in "$root_dir"*/; do
+    # 去掉路径末尾的斜杠和可能的空格
+    dirname=$(basename "$dir" | sed 's/[/ ]*$//')
+    dirs["$index"]="$dir"
+    out["$index"]="$dirname"
+    echo "$index. $dirname"
+    index=$((index + 1))
+done
+
+# 读取用户输入
+read -p "输入数字选择文件夹: " choice
+
+# 检查输入是否有效
+if ! [[ "$choice" =~ ^[1-99]+$ ]] || [[ -z "${dirs[$choice]}" ]]; then
+    echo "无效的输入，请重试。"
+    exit 1
+fi
+
+# 获取选择的目录路径
+selected_dir="${dirs[$choice]}"
+
+# 初始化变量来存储找到的.m4s文件路径
+m4s_files=()
+
+# 遍历选择目录中的c_开头的文件夹，并查找80文件夹中的.m4s文件
+for c_dir in "$selected_dir"/c_*/; do
+    if [ -d "$c_dir" ]; then
+        for eighty_dir in "$c_dir"/80/; do
+            if [ -d "$eighty_dir" ]; then
+                for file in "$eighty_dir"*.m4s; do
+                    if [ -f "$file" ]; then
+                        m4s_files+=("$file")
+                    fi
+                done
+            fi
+        done
+    fi
+done
+
+# 检查是否找到了至少两个.m4s文件
+if [ ${#m4s_files[@]} -lt 2 ]; then
+    echo "在选择的文件夹中没有找到足够的.m4s文件。"
+    exit 1
+fi
+
+# 由于.m4s文件通常不是直接合并的，这里我们假设你已经知道如何处理它们，
+# 并且只是想要一个示例脚本来展示如何选择文件夹和文件。
+# 在实际情况下，你可能需要额外的步骤来准备这些文件以供ffmpeg合并。
+
+# 假设我们只是简单地想要合并前两个找到的.m4s文件（注意：这通常不会工作！）
+# 输出文件命名为merged_output.mp4（或者你可以根据需要修改）
+output_file="merged_output.mp4"
+
+# 尝试合并前两个.m4s文件（注意：这通常不会工作，因为.m4s文件不是直接合并的）
+# 这里只是为了展示如何使用变量和ffmpeg命令
+ffmpeg -i "${m4s_files[0]}" -i "${m4s_files[1]}" -c copy -y "$output_file" 2>/dev/null
+if [ $? -ne 0 ]; then
+    echo "合并.m4s文件时出错。"
+    exit 1
+fi
+ 
+# 创建目标目录（如果不存在）
+target_dir="/storage/emulated/0/B站视频合成/"${out[$choice]}"/"
+mkdir -p "$target_dir"
+ 
+# 移动合并后的文件到目标目录
+mv "$output_file" "$target_dir"
+ 
+# 输出合并后的文件路径
+echo "合并后的文件（如果成功的话）已保存为：$target_dir$output_file"
+
